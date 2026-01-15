@@ -7,13 +7,11 @@ from pyspark.ml.feature import VectorAssembler
 from pyspark.ml.regression import GBTRegressor
 from pyspark.ml.evaluation import RegressionEvaluator
 
-# -------------------------------------------------
-# CONFIG
-# -------------------------------------------------
+
 SILVER_PATH = "./data/silver/silver_dataset_single"
 
 
-JDBC_URL = "jdbc:postgresql://postgres:5432/silver_data"
+JDBC_URL = "jdbc:postgresql://postgres-silver:5432/silver_data"
 DB_PROPERTIES = {
     "user": "silver_user",
     "password": "silver_pass123",
@@ -23,27 +21,31 @@ DB_PROPERTIES = {
 TABLE_NAME = "silver_table"
 MODEL_PATH = "models/pyspark_model"
 
-# -------------------------------------------------
-# SPARK SESSION
-# -------------------------------------------------
+
+
+
 def get_spark():
     return SparkSession.builder \
         .appName("Airflow_PySpark_ETA") \
+        .config("spark.jars.packages", "org.postgresql:postgresql:42.7.1") \
+       .config("spark.driver.memory", "4g") \
+        .config("spark.executor.memory", "4g") \
+        .config("spark.driver.maxResultSize", "1g") \
         .getOrCreate()
 
-# -------------------------------------------------
+
 # TASK 1 : SILVER → POSTGRESQL
-# -------------------------------------------------
+
 def load_silver_to_postgres():
     spark = get_spark()
 
-    # Lire le Silver (1 seul fichier parquet)
+   
     df = spark.read.parquet(SILVER_PATH)
 
     print(f"Silver chargé : {df.count()} lignes")
     df.show(5)
 
-    # Écriture PostgreSQL
+ 
     df.write \
         .mode("overwrite") \
         .option("batchsize", "50000") \
@@ -56,9 +58,9 @@ def load_silver_to_postgres():
 
     spark.stop()
 
-# -------------------------------------------------
-# TASK 2 : TRAIN MODEL (GBT)
-# -------------------------------------------------
+
+
+
 def train_gbt_model():
     spark = get_spark()
 
@@ -95,11 +97,12 @@ def train_gbt_model():
         featuresCol="features",
         labelCol="trip_duration_min",
         predictionCol="gbt_prediction",
-        maxIter=50,
+        maxIter=30,
         maxDepth=5,
         seed=42
     )
-
+    print(f"Taille du set d'entraînement : {train_data.count()}")
+    train_data.select("features", "trip_duration_min").show(5)
     gbt_model = gbt.fit(train_data)
     gbt_preds = gbt_model.transform(test_data)
 
@@ -118,12 +121,12 @@ def train_gbt_model():
 
     spark.stop()
 
-# -------------------------------------------------
-# DAG
-# -------------------------------------------------
+
+
+
 default_args = {
     "owner": "airflow",
-    "start_date": datetime(2024, 1, 1),
+    "start_date": datetime(2025, 15, 1),
     "retries": 1
 }
 
