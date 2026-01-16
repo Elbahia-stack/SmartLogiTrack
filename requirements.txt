@@ -5,3 +5,8 @@ joblib
 seaborn
 sqlalchemy
 pyspark
+fastapi 
+uvicorn
+python-jose[cryptography]
+pwdlib
+pwdlib[argon2]

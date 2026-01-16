@@ -117,7 +117,8 @@ def train_gbt_model():
         print(f"{metric.upper()} du GBT : {score}")
 
     # Sauvegarde modèle
-    gbt_model.save(MODEL_PATH)
+    gbt_model.write().overwrite().save(MODEL_PATH)
+   
 
     spark.stop()
 
@@ -126,7 +127,7 @@ def train_gbt_model():
 
 default_args = {
     "owner": "airflow",
-    "start_date": datetime(2025, 15, 1),
+    "start_date": datetime(2025, 1, 15),
     "retries": 1
 }
 
